@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2024-01-01T00:00:00.000Z",
+  "total": 3,
+  "entries": [
+    {
+      "url": "https://youtube.com/shorts/myOWyk7_8Aw",
+      "tag": "#shorts",
+      "folder": "shorts",
+      "siteTag": "#youtube",
+      "extraTags": "#مثال #تجربة",
+      "type": "short",
+      "dateValue": "",
+      "dayLabel": "بدون تاريخ",
+      "weekLabel": "بدون تاريخ",
+      "title": "عنوان الشورت التجريبي"
+    },
+    {
+      "url": "https://youtube.com/playlist?list=PLrAXtmErZgOeiKm4sgNOknGvNjby9efdf",
+      "tag": "#playlist",
+      "folder": "playlist",
+      "siteTag": "#youtube",
+      "extraTags": "#تعليم",
+      "type": "playlist",
+      "dateValue": "2024-01-15",
+      "dayLabel": "15/01/2024",
+      "weekLabel": "الأسبوع 3 - 2024",
+      "title": "قائمة تشغيل تعليمية",
+      "videoCount": 25,
+      "totalViews": 150000
+    },
+    {
+      "url": "https://arxiv.org/abs/1809.00219",
+      "tag": "#abs",
+      "folder": "abs",
+      "siteTag": "#arxiv",
+      "extraTags": "#بحث #ذكاء-اصطناعي",
+      "type": "webpage",
+      "dateValue": "2018-09-01",
+      "dayLabel": "01/09/2018",
+      "weekLabel": "الأسبوع 35 - 2018",
+      "title": "Attention Is All You Need - arXiv Paper"
+    }
+  ]
+    }
