@@ -1,0 +1,1023 @@
+================================================================================
+          دليل شامل لسكربت أرشفة يوتيوب المتقدم (youtube_archiver_full.py)
+                    شرح تفصيلي لكل سطر كود مع أمثلة عملية
+================================================================================
+
+                              الإصدار 2.0.0
+                           تاريخ الإنشاء: 2024
+
+================================================================================
+                              فهرس المحتويات
+================================================================================
+
+1. نظرة عامة على السكربت
+2. المتطلبات والتثبيت
+3. بنية الملف والأقسام
+4. شرح المكتبات المستوردة
+5. شرح الثوابت والإعدادات
+6. شرح دوال السجلات
+7. شرح دوال تنظيف الروابط
+8. شرح دوال تصنيف الروابط
+9. شرح دوال التواريخ
+10. شرح دوال جلب العناوين
+11. شرح دوال الملفات
+12. شرح دوال التحميل
+13. شرح الدالة الرئيسية
+14. أمثلة الاستخدام
+
+================================================================================
+                         1. نظرة عامة على السكربت
+================================================================================
+
+هذا السكربت يقوم بـ:
+─────────────────────
+• تنظيف روابط يوتيوب من معاملات التتبع (?si=, &feature=, إلخ)
+• تحويل روابط youtu.be إلى youtube.com
+• تصنيف الروابط تلقائياً (وسم الموقع + وسم المسار + المجلد)
+• استخراج التاريخ من الرابط وحساب رقم الأسبوع
+• جلب عناوين الفيديوهات وقوائم التشغيل وصفحات الويب
+• قراءة/كتابة ملفات JSON و TXT
+• تحميل الفيديوهات باستخدام yt-dlp
+
+الميزات الخاصة:
+────────────────
+• دعم المواقع غير يوتيوب (arxiv, medium, github, إلخ)
+• جلب معلومات قوائم التشغيل (عدد الفيديوهات، المشاهدات)
+• التحميل المتوازي (عدة فيديوهات في نفس الوقت)
+• سجل تفصيلي لكل العمليات
+
+================================================================================
+                         2. المتطلبات والتثبيت
+================================================================================
+
+المكتبات المطلوبة:
+──────────────────
+
+# أساسية (مدمجة مع بايثون)
+─────────────────────────
+argparse          # معالجة خيارات سطر الأوامر
+concurrent.futures # التحميل المتوازي
+datetime          # التعامل مع التواريخ
+json              # قراءة/كتابة JSON
+os                # نظام الملفات
+re                # التعبيرات النمطية
+sys               # التحكم في النظام
+pathlib           # المسارات
+typing            # أنواع البيانات
+urllib.parse      # تحليل الروابط
+
+# اختيارية (تحتاج تثبيت)
+─────────────────────────
+pip install yt-dlp          # تحميل الفيديوهات
+pip install requests        # جلب البيانات من الإنترنت
+pip install beautifulsoup4  # تحليل صفحات HTML
+
+# تثبيت الكل دفعة واحدة:
+pip install yt-dlp requests beautifulsoup4
+
+================================================================================
+                         3. بنية الملف والأقسام
+================================================================================
+
+الملف مقسم إلى الأقسام التالية:
+────────────────────────────────
+
+┌─────────────────────────────────────────────────────────────┐
+│  1. الترويسة (Header)                                       │
+│     - وصف البرنامج والميزات                                 │
+│     - معلومات المؤلف والترخيص                               │
+├─────────────────────────────────────────────────────────────┤
+│  2. استيراد المكتبات                                         │
+│     - المكتبات الأساسية                                     │
+│     - المكتبات الاختيارية (مع try/except)                   │
+├─────────────────────────────────────────────────────────────┤
+│  3. الثوابت والإعدادات                                       │
+│     - TRACKING_PARAMS: معاملات التتبع                       │
+│     - IMPORTANT_PARAMS: المعاملات المهمة                    │
+│     - YOUTUBE_VALID_SEGMENTS: مسارات يوتيوب                 │
+│     - COMMON_WEB_PATHS: مسارات المواقع الأخرى               │
+│     - DATE_PATTERNS: أنماط التاريخ                          │
+├─────────────────────────────────────────────────────────────┤
+│  4. دوال السجلات                                             │
+│     - log(): طباعة وحفظ الرسائل                             │
+│     - print_header(): طباعة عناوين الأقسام                  │
+│     - print_stats(): طباعة الإحصائيات                       │
+├─────────────────────────────────────────────────────────────┤
+│  5. دوال تنظيف الروابط                                       │
+│     - clean_url(): تنظيف الرابط من التتبع                   │
+├─────────────────────────────────────────────────────────────┤
+│  6. دوال تصنيف الروابط                                       │
+│     - classify_url_type(): تحديد نوع الرابط                 │
+│     - get_site_tag(): استخراج وسم الموقع                    │
+│     - get_valid_path_segment(): استخراج المسار الصالح       │
+│     - should_use_youtube_segment(): التحقق من مسار يوتيوب   │
+│     - extract_tag_and_folder(): استخراج الوسم والمجلد       │
+├─────────────────────────────────────────────────────────────┤
+│  7. دوال التواريخ                                            │
+│     - detect_date_from_url(): استخراج التاريخ من الرابط     │
+│     - get_iso_week(): حساب رقم الأسبوع                      │
+│     - format_day_label(): تنسيق اليوم                       │
+│     - format_week_label(): تنسيق الأسبوع                    │
+│     - apply_date_value(): تطبيق التاريخ                     │
+├─────────────────────────────────────────────────────────────┤
+│  8. دوال بناء الإدخالات                                      │
+│     - build_entry(): بناء إدخال كامل لرابط                  │
+├─────────────────────────────────────────────────────────────┤
+│  9. دوال جلب العناوين                                        │
+│     - fetch_youtube_video_title(): عنوان فيديو يوتيوب       │
+│     - fetch_youtube_playlist_info(): معلومات قائمة التشغيل  │
+│     - fetch_webpage_title(): عنوان صفحة ويب                 │
+│     - fetch_all_titles(): جلب كل العناوين                   │
+├─────────────────────────────────────────────────────────────┤
+│  10. دوال الملفات                                            │
+│     - load_urls_from_txt(): قراءة من TXT                    │
+│     - save_urls_to_txt(): حفظ في TXT                        │
+│     - load_entries_from_json(): قراءة من JSON               │
+│     - save_entries_to_json(): حفظ في JSON                   │
+├─────────────────────────────────────────────────────────────┤
+│  11. دوال التحميل                                            │
+│     - build_ydl_opts(): بناء إعدادات yt-dlp                 │
+│     - download_one(): تحميل فيديو واحد                      │
+│     - download_all(): تحميل الكل                            │
+├─────────────────────────────────────────────────────────────┤
+│  12. الدالة الرئيسية                                         │
+│     - main(): نقطة البداية                                  │
+└─────────────────────────────────────────────────────────────┘
+
+================================================================================
+                      4. شرح المكتبات المستوردة
+================================================================================
+
+# ══════════════════════════════════════════════════════════════════════════════
+# استيراد المكتبات الأساسية
+# ══════════════════════════════════════════════════════════════════════════════
+
+import argparse
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة معالجة خيارات سطر الأوامر
+# تستخدم لتحليل الخيارات مثل: --urls-file, --output-dir, --download
+# مثال:
+#   parser = argparse.ArgumentParser(description="وصف البرنامج")
+#   parser.add_argument("--urls-file", type=Path, help="ملف الروابط")
+#   args = parser.parse_args()
+#   print(args.urls_file)  # الوصول للقيمة
+
+import concurrent.futures
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة التنفيذ المتوازي
+# تستخدم لتحميل عدة فيديوهات في نفس الوقت
+# مثال:
+#   with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+#       futures = [executor.submit(download_one, url) for url in urls]
+#       for future in concurrent.futures.as_completed(futures):
+#           result = future.result()
+
+import datetime as dt
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة التعامل مع التواريخ والأوقات
+# تستخدم لـ:
+#   - الحصول على الوقت الحالي للسجلات
+#   - تحليل التواريخ من الروابط
+#   - حساب رقم الأسبوع
+# مثال:
+#   now = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+#   date = dt.date(2024, 1, 15)
+#   week = date.isocalendar()[1]
+
+import json
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة قراءة وكتابة ملفات JSON
+# مثال:
+#   # كتابة
+#   with open("data.json", "w", encoding="utf-8") as f:
+#       json.dump(data, f, ensure_ascii=False, indent=2)
+#   
+#   # قراءة
+#   with open("data.json", "r", encoding="utf-8") as f:
+#       data = json.load(f)
+
+import os
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة نظام الملفات
+# تستخدم للتعامل مع الملفات والمجلدات (نادر الاستخدام هنا لأننا نستخدم pathlib)
+
+import re
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة التعبيرات النمطية (Regular Expressions)
+# تستخدم لـ:
+#   - البحث عن أنماط التاريخ في الروابط
+#   - التحقق من صحة المسارات
+# مثال:
+#   match = re.search(r'(\d{4})-(\d{2})-(\d{2})', "video-2024-01-15")
+#   if match:
+#       year = match.group(1)  # 2024
+
+import sys
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة النظام
+# تستخدم للخروج من البرنامج برمز خطأ
+# مثال:
+#   sys.exit(1)  # خروج مع خطأ
+#   sys.exit(0)  # خروج ناجح
+
+from pathlib import Path
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة المسارات الحديثة
+# أفضل من os.path لأنها:
+#   - أسهل في الاستخدام
+#   - تعمل على جميع أنظمة التشغيل
+# مثال:
+#   path = Path("archive") / "videos" / "video.mp4"
+#   path.mkdir(parents=True, exist_ok=True)
+#   path.exists()
+
+from typing import Any, Dict, List, Optional, Tuple
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة تحديد أنواع البيانات (Type Hints)
+# تستخدم لتوثيق الكود وتسهيل الفهم
+# مثال:
+#   def clean_url(url: str) -> str:  # يأخذ نص، يرجع نص
+#   def load_urls(path: Path) -> List[str]:  # يرجع قائمة نصوص
+#   def build_entry(url: str) -> Dict[str, Any]:  # يرجع قاموس
+
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+# ─────────────────────────────────────────────────────────────────────────────
+# مكتبة تحليل الروابط
+# الدوال المستخدمة:
+#   - urlparse(): تقسيم الرابط إلى أجزائه
+#   - parse_qs(): تحليل معاملات الاستعلام (query string)
+#   - urlencode(): بناء معاملات الاستعلام
+#   - urlunparse(): إعادة بناء الرابط
+# مثال:
+#   parsed = urlparse("https://youtube.com/watch?v=abc&si=123")
+#   # parsed.scheme = "https"
+#   # parsed.hostname = "youtube.com"
+#   # parsed.path = "/watch"
+#   # parsed.query = "v=abc&si=123"
+#   
+#   params = parse_qs(parsed.query)
+#   # params = {'v': ['abc'], 'si': ['123']}
+
+================================================================================
+                      5. شرح الثوابت والإعدادات
+================================================================================
+
+TRACKING_PARAMS: List[str] = [
+    'si',           # معامل مشاركة يوتيوب الجديد
+    'feature',      # مصدر الوصول للفيديو
+    'fbclid',       # معرّف فيسبوك للتتبع
+    'gclid',        # معرّف جوجل للإعلانات
+    'kw',           # كلمة مفتاحية
+    'spm',          # تتبع علي بابا
+    'utm_source',   # مصدر الحملة التسويقية
+    'utm_medium',   # وسيط الحملة
+    'utm_campaign', # اسم الحملة
+    'utm_term',     # مصطلح البحث
+    'utm_content',  # محتوى الإعلان
+]
+# ─────────────────────────────────────────────────────────────────────────────
+# قائمة معاملات التتبع التي سيتم حذفها من الروابط
+# هذه المعاملات تُستخدم للتتبع ولا تؤثر على الفيديو نفسه
+# مثال:
+#   قبل: https://youtube.com/watch?v=abc&si=123&feature=share
+#   بعد: https://youtube.com/watch?v=abc
+
+
+IMPORTANT_PARAMS: List[str] = [
+    'v',      # معرّف الفيديو (ضروري للوصول للفيديو)
+    'list',   # معرّف قائمة التشغيل
+    't',      # وقت البداية في الفيديو (مثل t=120 = الدقيقة 2)
+    'index',  # ترتيب الفيديو في القائمة
+]
+# ─────────────────────────────────────────────────────────────────────────────
+# المعاملات المهمة التي يجب الحفاظ عليها
+# بدون 'v' لا يمكن فتح الفيديو
+
+
+YOUTUBE_VALID_SEGMENTS: List[str] = [
+    'shorts',    # فيديوهات قصيرة
+    'playlist',  # قوائم التشغيل
+    'channel',   # القنوات (الصيغة القديمة)
+    'user',      # المستخدمين (صيغة قديمة)
+    'c',         # القنوات المخصصة
+    'live',      # البث المباشر
+    'feed',      # الخلاصات
+    'results',   # نتائج البحث
+    'gaming',    # قسم الألعاب
+]
+# ─────────────────────────────────────────────────────────────────────────────
+# مسارات يوتيوب المعروفة التي تُعتبر وسوماً صالحة
+# إذا كان المسار الأول في الرابط من هذه القائمة، يُستخدم كوسم
+# مثال:
+#   youtube.com/shorts/abc → وسم: #shorts، مجلد: shorts
+#   youtube.com/_gYIWm_v19U → ليس في القائمة → وسم: #videos
+
+
+COMMON_WEB_PATHS: List[str] = [
+    'abs', 'pdf', 'article', 'articles', 'post', 'posts', 'blog', 'news',
+    'docs', 'documentation', 'wiki', 'help', 'support', 'faq',
+    # ... إلخ
+]
+# ─────────────────────────────────────────────────────────────────────────────
+# مسارات شائعة للمواقع غير يوتيوب
+# تُستخدم لتحديد الوسم والمجلد للروابط الأخرى
+# مثال:
+#   arxiv.org/abs/1809.00219 → وسم: #abs، مجلد: abs
+#   medium.com/article/my-post → وسم: #article، مجلد: article
+
+
+DATE_PATTERNS: List[Tuple[str, List[str]]] = [
+    (r'(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})', ['year', 'month', 'day']),
+    (r'(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})', ['day', 'month', 'year']),
+    (r'(\d{4})(\d{2})(\d{2})', ['year', 'month', 'day']),
+]
+# ─────────────────────────────────────────────────────────────────────────────
+# أنماط التاريخ للبحث في الروابط
+# كل عنصر يحتوي على:
+#   - التعبير النمطي (regex)
+#   - ترتيب الأجزاء (سنة، شهر، يوم)
+# أمثلة:
+#   2024-01-15 → السنة-الشهر-اليوم
+#   15/01/2024 → اليوم/الشهر/السنة
+#   20240115   → بدون فواصل
+
+================================================================================
+                         6. شرح دوال السجلات
+================================================================================
+
+def log(message: str, level: str = "INFO", log_file: Optional[Path] = None) -> None:
+    """
+    طباعة رسالة على الشاشة وحفظها في ملف السجل
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # المعاملات:
+    #   message: النص المراد طباعته (مثل "تم التحميل بنجاح")
+    #   level: مستوى الرسالة:
+    #          - "INFO": معلومات عادية
+    #          - "WARNING": تحذير
+    #          - "ERROR": خطأ
+    #          - "SUCCESS": نجاح
+    #   log_file: مسار ملف السجل (اختياري)
+    #
+    # الخطوات:
+    #   1. الحصول على التاريخ والوقت الحالي
+    #   2. تحديد رمز المستوى (إيموجي)
+    #   3. تنسيق السطر
+    #   4. طباعة على الشاشة
+    #   5. حفظ في ملف السجل (إذا تم تحديده)
+    
+    now = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # ↑ الحصول على الوقت الحالي بصيغة: 2024-01-15 14:30:45
+    
+    level_icons = {
+        "INFO": "ℹ️",
+        "WARNING": "⚠️",
+        "ERROR": "❌",
+        "SUCCESS": "✅",
+    }
+    icon = level_icons.get(level, "•")
+    # ↑ اختيار الإيموجي المناسب للمستوى
+    
+    line = f"[{now}] {icon} [{level}] {message}"
+    # ↑ تنسيق السطر: [2024-01-15 14:30:45] ✅ [SUCCESS] تم التحميل بنجاح
+    
+    print(line)
+    # ↑ طباعة على الشاشة
+    
+    if log_file is not None:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        # ↑ إنشاء المجلدات إذا لم تكن موجودة
+        
+        with log_file.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+        # ↑ فتح الملف في وضع الإضافة (append) وكتابة السطر
+
+================================================================================
+                      7. شرح دوال تنظيف الروابط
+================================================================================
+
+def clean_url(url: str) -> str:
+    """
+    تنظيف الرابط من معاملات التتبع مع الحفاظ على المعاملات المهمة
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # مثال:
+    #   الإدخال:  "https://youtube.com/watch?v=abc&si=123&feature=share"
+    #   الإخراج:  "https://youtube.com/watch?v=abc"
+    
+    try:
+        url = url.strip()
+        # ↑ إزالة المسافات من البداية والنهاية
+        
+        if not url:
+            return ''
+        # ↑ إذا كان فارغاً، نرجع نصاً فارغاً
+        
+        parsed = urlparse(url)
+        # ↑ تقسيم الرابط إلى أجزائه:
+        #   parsed.scheme = "https"
+        #   parsed.hostname = "youtube.com"
+        #   parsed.path = "/watch"
+        #   parsed.query = "v=abc&si=123&feature=share"
+        
+        hostname = parsed.hostname.lower() if parsed.hostname else ''
+        # ↑ الحصول على اسم الموقع بأحرف صغيرة
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # تحويل youtu.be إلى youtube.com
+        # ═══════════════════════════════════════════════════════════════════
+        if hostname in ('youtu.be', 'www.youtu.be'):
+            video_id = parsed.path.lstrip('/')
+            # ↑ استخراج معرّف الفيديو من المسار
+            #   youtu.be/abc123 → abc123
+            
+            if video_id:
+                new_query = {'v': video_id}
+                # ↑ إنشاء معاملات جديدة مع معرّف الفيديو
+                
+                old_params = parse_qs(parsed.query)
+                for param in ['t', 'list', 'index']:
+                    if param in old_params:
+                        new_query[param] = old_params[param][0]
+                # ↑ نقل المعاملات المهمة (وقت البداية، القائمة، الترتيب)
+                
+                return f"https://youtube.com/watch?{urlencode(new_query)}"
+                # ↑ إرجاع الرابط الجديد بصيغة youtube.com
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # تصفية المعاملات
+        # ═══════════════════════════════════════════════════════════════════
+        query_params = parse_qs(parsed.query)
+        # ↑ تحليل معاملات الاستعلام
+        #   {'v': ['abc'], 'si': ['123'], 'feature': ['share']}
+        
+        filtered_params = {}
+        
+        for param, values in query_params.items():
+            if param.lower() in TRACKING_PARAMS:
+                continue
+            # ↑ تخطي معاملات التتبع (si, feature, fbclid, إلخ)
+            
+            if 'youtube.com' in hostname or 'youtu.be' in hostname:
+                if param.lower() in IMPORTANT_PARAMS:
+                    filtered_params[param] = values[0]
+            # ↑ لروابط يوتيوب: الحفاظ على المعاملات المهمة فقط
+            
+            else:
+                filtered_params[param] = values[0]
+            # ↑ للمواقع الأخرى: الحفاظ على كل المعاملات غير التتبعية
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # إعادة بناء الرابط
+        # ═══════════════════════════════════════════════════════════════════
+        new_query = urlencode(filtered_params) if filtered_params else ''
+        
+        cleaned = urlunparse((
+            parsed.scheme,      # https
+            parsed.netloc,      # youtube.com
+            parsed.path.rstrip('/'),  # /watch (بدون / في النهاية)
+            parsed.params,      # (فارغ عادة)
+            new_query,          # v=abc
+            ''                  # (بدون fragment)
+        ))
+        
+        return cleaned
+        
+    except Exception as e:
+        log(f"خطأ في تنظيف الرابط: {url} - {e}", "WARNING")
+        return url.strip()
+
+================================================================================
+                      8. شرح دوال تصنيف الروابط
+================================================================================
+
+def classify_url_type(url: str) -> str:
+    """
+    تحديد نوع الرابط (فيديو، شورت، قائمة تشغيل، قناة، صفحة ويب)
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # أمثلة:
+    #   youtube.com/shorts/abc → 'short'
+    #   youtube.com/watch?v=abc → 'video'
+    #   youtube.com/playlist?list=abc → 'playlist'
+    #   youtube.com/@channel → 'channel'
+    #   arxiv.org/abs/123 → 'webpage'
+    
+    url_lower = url.lower()
+    
+    try:
+        parsed = urlparse(url)
+        hostname = (parsed.hostname or '').lower().replace('www.', '')
+        
+        # تصنيف روابط يوتيوب
+        if 'youtube.com' in hostname or 'youtu.be' in hostname:
+            if '/shorts/' in url_lower:
+                return 'short'
+            if 'playlist?' in url_lower or 'list=' in url_lower:
+                return 'playlist'
+            if '/@' in url or '/channel/' in url_lower or '/c/' in url_lower:
+                return 'channel'
+            if 'watch?v=' in url_lower or 'youtu.be/' in url_lower:
+                return 'video'
+            return 'video'
+        
+        # المواقع الأخرى
+        return 'webpage'
+        
+    except Exception:
+        return 'other'
+
+
+def get_site_tag(hostname: str) -> str:
+    """
+    استخراج وسم الموقع من اسم الدومين
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # أمثلة:
+    #   www.youtube.com → '#youtube'
+    #   arxiv.org → '#arxiv'
+    #   medium.com → '#medium'
+    
+    clean_host = hostname.lower().replace('www.', '')
+    
+    if 'youtube.com' in clean_host or 'youtu.be' in clean_host:
+        return '#youtube'
+    
+    base = clean_host.split('.')[0]
+    # ↑ استخراج الجزء الأول من الدومين
+    #   arxiv.org → arxiv
+    
+    return f'#{base}' if base else '#site'
+
+
+def extract_tag_and_folder(url: str) -> Dict[str, str]:
+    """
+    استخراج الوسم والمجلد ووسم الموقع من الرابط
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # مثال 1: youtube.com/shorts/abc
+    #   → primaryTag: '#shorts'
+    #   → folder: 'shorts'
+    #   → siteTag: '#youtube'
+    #
+    # مثال 2: youtube.com/_gYIWm_v19U
+    #   → primaryTag: '#videos' (لأن _gYIWm_v19U ليس مسار صالح)
+    #   → folder: 'videos'
+    #   → siteTag: '#youtube'
+    #
+    # مثال 3: arxiv.org/abs/1809.00219
+    #   → primaryTag: '#abs'
+    #   → folder: 'abs'
+    #   → siteTag: '#arxiv'
+    
+    # ... (انظر الكود الكامل للتفاصيل)
+
+================================================================================
+                         9. شرح دوال التواريخ
+================================================================================
+
+def detect_date_from_url(url: str) -> Optional[dt.date]:
+    """
+    محاولة استخراج التاريخ من الرابط
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # يبحث في المسار والمعاملات عن أنماط تاريخ مثل:
+    #   - 2024-01-15
+    #   - 15/01/2024
+    #   - 20240115
+    #
+    # إذا وجد تاريخ صالح، يرجعه ككائن date
+    # إذا لم يجد، يرجع None
+    
+    try:
+        parsed = urlparse(url)
+        search_text = f"{parsed.path} {parsed.query}"
+        # ↑ البحث في المسار والمعاملات معاً
+        
+        for pattern, order in DATE_PATTERNS:
+            match = re.search(pattern, search_text)
+            if match:
+                values = {}
+                for i, key in enumerate(order):
+                    values[key] = int(match.group(i + 1))
+                # ↑ استخراج القيم من التطابق
+                
+                year = values.get('year', 0)
+                month = values.get('month', 0)
+                day = values.get('day', 0)
+                
+                if 1 <= month <= 12 and 1 <= day <= 31 and 1900 <= year <= 2100:
+                    try:
+                        return dt.date(year, month, day)
+                    except ValueError:
+                        continue
+                # ↑ التحقق من صحة القيم وإرجاع التاريخ
+        
+        return None
+        
+    except Exception:
+        return None
+
+
+def get_iso_week(date: dt.date) -> int:
+    """
+    حساب رقم الأسبوع حسب معيار ISO 8601
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # معيار ISO 8601:
+    #   - الأسبوع يبدأ يوم الإثنين
+    #   - الأسبوع الأول هو الذي يحتوي على 4 يناير
+    #   - الأسابيع مرقمة من 1 إلى 52/53
+    #
+    # مثال:
+    #   15 يناير 2024 → الأسبوع 3
+    
+    return date.isocalendar()[1]
+    # ↑ isocalendar() يرجع (السنة، رقم الأسبوع، رقم اليوم)
+
+
+def format_week_label(date: dt.date) -> str:
+    """
+    تنسيق تسمية الأسبوع
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # مثال:
+    #   15 يناير 2024 → "الأسبوع 3 - 2024"
+    
+    week = get_iso_week(date)
+    return f"الأسبوع {week} - {date.year}"
+
+================================================================================
+                      10. شرح دوال جلب العناوين
+================================================================================
+
+def fetch_youtube_video_title(url: str) -> Optional[str]:
+    """
+    جلب عنوان فيديو يوتيوب باستخدام oEmbed API
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # oEmbed API:
+    #   - API مجاني من يوتيوب
+    #   - لا يحتاج مفتاح API
+    #   - يرجع معلومات أساسية (العنوان، صاحب القناة، الصورة المصغرة)
+    #
+    # الرابط:
+    #   https://www.youtube.com/oembed?url=VIDEO_URL&format=json
+    
+    if not REQUESTS_AVAILABLE:
+        return None
+    
+    try:
+        oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
+        response = requests.get(oembed_url, timeout=10)
+        # ↑ إرسال طلب HTTP مع timeout 10 ثواني
+        
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('title')
+            # ↑ استخراج العنوان من الاستجابة
+        
+        return None
+        
+    except Exception as e:
+        log(f"خطأ في جلب عنوان الفيديو: {e}", "WARNING")
+        return None
+
+
+def fetch_youtube_playlist_info(url: str) -> Dict[str, Any]:
+    """
+    جلب معلومات قائمة تشغيل يوتيوب
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # يستخدم yt-dlp لجلب:
+    #   - عنوان القائمة
+    #   - عدد الفيديوهات
+    #   - عدد المشاهدات (إن توفر)
+    
+    result = {
+        'title': '',
+        'videoCount': 0,
+        'totalViews': 0,
+    }
+    
+    if not YT_DLP_AVAILABLE:
+        return result
+    
+    try:
+        ydl_opts = {
+            'quiet': True,           # عدم طباعة رسائل
+            'no_warnings': True,     # عدم طباعة تحذيرات
+            'extract_flat': True,    # استخراج معلومات بدون تحميل
+            'skip_download': True,   # عدم تحميل الفيديوهات
+        }
+        
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            # ↑ استخراج المعلومات فقط بدون تحميل
+            
+            if info:
+                result['title'] = info.get('title', '')
+                entries = info.get('entries', [])
+                result['videoCount'] = len(entries) if entries else 0
+                result['totalViews'] = info.get('view_count', 0)
+        
+        return result
+        
+    except Exception as e:
+        log(f"خطأ في جلب معلومات القائمة: {e}", "WARNING")
+        return result
+
+
+def fetch_webpage_title(url: str) -> Optional[str]:
+    """
+    جلب عنوان صفحة ويب عادية
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # يستخدم:
+    #   - requests لجلب الصفحة
+    #   - BeautifulSoup لتحليل HTML
+    #
+    # يبحث عن:
+    #   1. عنصر <title>
+    #   2. meta property="og:title"
+    
+    if not REQUESTS_AVAILABLE or not BS4_AVAILABLE:
+        return None
+    
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        # ↑ تقمص متصفح لتجنب الحظر
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # ↑ تحليل HTML
+            
+            title_tag = soup.find('title')
+            if title_tag:
+                return title_tag.get_text().strip()
+            
+            og_title = soup.find('meta', property='og:title')
+            if og_title:
+                return og_title.get('content', '').strip()
+        
+        return None
+        
+    except Exception as e:
+        log(f"خطأ في جلب عنوان الصفحة: {e}", "WARNING")
+        return None
+
+================================================================================
+                         11. شرح دوال الملفات
+================================================================================
+
+def load_entries_from_json(file_path: Path) -> List[Dict]:
+    """
+    قراءة الإدخالات من ملف JSON
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # يدعم صيغتين:
+    #   1. مصفوفة مباشرة: [{...}, {...}]
+    #   2. كائن مع entries: {"entries": [{...}, {...}]}
+    
+    if not file_path.exists():
+        return []
+    
+    try:
+        with file_path.open('r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        if isinstance(data, list):
+            return data
+        elif isinstance(data, dict) and 'entries' in data:
+            return data['entries']
+        else:
+            return []
+            
+    except json.JSONDecodeError as e:
+        log(f"خطأ في قراءة ملف JSON: {e}", "ERROR")
+        return []
+
+
+def save_entries_to_json(entries: List[Dict], file_path: Path) -> None:
+    """
+    حفظ الإدخالات في ملف JSON
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # يحفظ بالصيغة:
+    # {
+    #   "generatedAt": "2024-01-15T14:30:45.123456",
+    #   "total": 100,
+    #   "entries": [...]
+    # }
+    
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    # ↑ إنشاء المجلدات إذا لم تكن موجودة
+    
+    payload = {
+        'generatedAt': dt.datetime.now().isoformat(),
+        'total': len(entries),
+        'entries': entries,
+    }
+    
+    with file_path.open('w', encoding='utf-8') as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    # ↑ ensure_ascii=False: للحفاظ على الأحرف العربية
+    # ↑ indent=2: تنسيق مقروء
+    
+    log(f"تم حفظ {len(entries)} إدخال في {file_path}", "SUCCESS")
+
+================================================================================
+                         12. شرح دوال التحميل
+================================================================================
+
+def build_ydl_opts(output_dir: Path, fmt: str, write_metadata: bool = True) -> Dict:
+    """
+    بناء خيارات yt-dlp
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # الإعدادات الرئيسية:
+    
+    outtmpl = str(output_dir / "%(uploader)s/%(upload_date)s - %(title)s [%(id)s].%(ext)s")
+    # ↑ نمط اسم الملف:
+    #   archive/ChannelName/20240115 - Video Title [abc123xyz].mp4
+    
+    ydl_opts: Dict = {
+        'outtmpl': outtmpl,           # نمط اسم الملف
+        'format': fmt,                 # صيغة التحميل
+        'noplaylist': False,           # السماح بتحميل قوائم التشغيل
+        'ignoreerrors': True,          # تجاهل الأخطاء والاستمرار
+        'retries': 5,                  # عدد محاولات إعادة المحاولة
+        'fragment_retries': 10,        # محاولات الأجزاء
+        'concurrent_fragment_downloads': 5,  # تحميل متوازي للأجزاء
+        'merge_output_format': 'mp4',  # دمج في MP4
+        'continuedl': True,            # استكمال التحميل
+        'noprogress': False,           # إظهار شريط التقدم
+    }
+    
+    if write_metadata:
+        ydl_opts.update({
+            'writeinfojson': True,     # حفظ معلومات JSON
+            'writesubtitles': True,    # حفظ الترجمات
+            'writeautomaticsub': True, # حفظ الترجمات التلقائية
+            'writethumbnail': True,    # حفظ الصورة المصغرة
+        })
+    
+    return ydl_opts
+
+
+def download_all(entries, output_dir, fmt, max_concurrent, log_file, write_metadata):
+    """
+    تحميل جميع الفيديوهات بالتوازي
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # يستخدم ThreadPoolExecutor للتحميل المتوازي
+    # يفلتر الروابط القابلة للتحميل (يوتيوب فقط)
+    # ينشئ مجلدات فرعية حسب التصنيف (shorts, videos, إلخ)
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_concurrent) as executor:
+        futures = {}
+        
+        for i, entry in enumerate(downloadable, 1):
+            folder = entry.get('folder', 'videos')
+            entry_output = output_dir / folder
+            # ↑ إنشاء مجلد فرعي حسب التصنيف
+            
+            future = executor.submit(
+                download_one, i, url, entry_output, fmt, log_file, write_metadata
+            )
+            futures[future] = url
+        
+        for future in concurrent.futures.as_completed(futures):
+            if future.result():
+                success += 1
+            else:
+                failed += 1
+
+================================================================================
+                         13. شرح الدالة الرئيسية
+================================================================================
+
+def main() -> None:
+    """
+    الدالة الرئيسية للبرنامج
+    """
+    # ─────────────────────────────────────────────────────────────────────────
+    # خطوات العمل:
+    #
+    # 1. إعداد معالج سطر الأوامر (argparse)
+    #    - تحديد الخيارات المتاحة
+    #    - تحديد القيم الافتراضية
+    #    - توفير رسائل المساعدة
+    #
+    # 2. معالجة الخيارات المدخلة
+    #    - التحقق من وجود عملية محددة
+    #    - إعداد ملف السجل
+    #
+    # 3. تحميل أو إنشاء البيانات
+    #    - من ملف روابط نصي (--urls-file)
+    #    - أو من ملف JSON موجود (--json-file)
+    #
+    # 4. تنفيذ العمليات المطلوبة
+    #    - --classify-only: تنظيف وتصنيف فقط
+    #    - --fetch-titles: جلب العناوين
+    #    - --download: تحميل الفيديوهات
+    #
+    # 5. حفظ البيانات
+    #    - ملف JSON مع كل المعلومات
+    #    - ملف TXT بالروابط فقط
+
+================================================================================
+                         14. أمثلة الاستخدام
+================================================================================
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# مثال 1: تنظيف وتصنيف روابط من ملف نصي
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# أولاً: أنشئ ملف urls.txt
+echo "https://youtube.com/watch?v=abc123&si=xyz
+https://youtu.be/def456?feature=share
+https://youtube.com/shorts/ghi789
+https://arxiv.org/abs/1809.00219" > urls.txt
+
+# ثانياً: شغّل الأداة
+python youtube_archiver_full.py --urls-file urls.txt --classify-only
+
+# النتيجة:
+#   - ملف links_data.json يحتوي على كل الروابط مع وسومها
+#   - ملف links_data.txt يحتوي على الروابط النظيفة فقط
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# مثال 2: جلب عناوين الفيديوهات
+# ═══════════════════════════════════════════════════════════════════════════════
+
+python youtube_archiver_full.py --json-file links_data.json --fetch-titles
+
+# النتيجة:
+#   - يتم تحديث ملف links_data.json مع العناوين
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# مثال 3: تحميل الفيديوهات
+# ═══════════════════════════════════════════════════════════════════════════════
+
+python youtube_archiver_full.py \
+    --json-file links_data.json \
+    --download \
+    --output-dir ./archive \
+    --max-concurrent 4 \
+    --format "bestvideo[height<=1080]+bestaudio"
+
+# النتيجة:
+#   - تحميل الفيديوهات في مجلد archive/
+#   - تنظيم حسب المجلدات (shorts/, videos/, إلخ)
+#   - سجل في archive/archiver.log
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# مثال 4: العمل الكامل (تنظيف + عناوين + تحميل)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# الخطوة 1: تنظيف وتصنيف
+python youtube_archiver_full.py --urls-file urls.txt --classify-only
+
+# الخطوة 2: جلب العناوين
+python youtube_archiver_full.py --json-file links_data.json --fetch-titles
+
+# الخطوة 3: تحميل
+python youtube_archiver_full.py --json-file links_data.json --download
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# مثال 5: استخدام مع واجهة الويب
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 1. افتح index.html في المتصفح
+# 2. أضف الروابط وصنّفها
+# 3. صدّر ملف JSON (youtube_links_with_tags.json)
+# 4. انقل الملف لمجلد السكربت
+# 5. شغّل:
+
+python youtube_archiver_full.py \
+    --json-file youtube_links_with_tags.json \
+    --fetch-titles \
+    --download \
+    --output-dir ./archive
+
+================================================================================
+                              نهاية الدليل
+================================================================================
+
+شكراً لاستخدام أداة أرشفة يوتيوب المتقدمة!
+
+للمزيد من المعلومات:
+  - راجع ملف README.md
+  - راجع ملف CODE_STRUCTURE.md
+  - استخدم: python youtube_archiver_full.py --help
+
+================================================================================
