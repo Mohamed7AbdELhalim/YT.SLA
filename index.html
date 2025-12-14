@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>أداة بايثون لأرشفة فيديوهات يوتيوب</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    textarea { direction: ltr; }
+    code { direction: ltr; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <header class="mb-8 border-b border-slate-800 pb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-emerald-400">تصميم أداة بايثون لأرشفة فيديوهات يوتيوب</h1>
+        <p class="text-slate-300 mt-2 text-sm md:text-base">
+          كل ما تحتاجه لصناعة سكربت بايثون متكامل مع إدارة روابط ذكية: تنظيف معاملات <span class="font-mono">?si=</span>, تحويل روابط <span class="font-mono">youtu.be</span> تلقائياً، تصنيف بالمجلدات والوسوم، وسم باسم الموقع، إضافة تصنيف زمني (يوم/شهر/سنة + أسبوع) مع حفظ واستيراد البيانات.
+        </p>
+      </div>
+      <div class="flex flex-col items-start gap-2 text-xs md:text-sm text-slate-300">
+        <span class="px-3 py-1 rounded-full bg-slate-900/70 border border-emerald-500/40">وسوم تلقائية + مجلدات + موقع</span>
+        <span class="px-3 py-1 rounded-full bg-slate-900/70 border border-blue-500/40">تصنيف زمني: يوم / أسبوع</span>
+        <a href="detailed_guide.md" target="_blank" class="px-3 py-1 rounded-full bg-blue-900/70 border border-blue-500/40 hover:bg-blue-800/70 transition-colors flex items-center gap-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          دليل شامل مع شرح كل سطر
+        </a>
+      </div>
+    </header>
+
+    <main class="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <!-- التصميم العام للأداة -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 md:p-6 space-y-4">
+        <h2 class="text-xl font-semibold text-emerald-300 flex items-center gap-2">
+          1. الفكرة العامة للأداة
+        </h2>
+        <p class="text-sm md:text-base text-slate-200 leading-relaxed">
+          سكربت بايثون يعتمد على <span class="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-xs">yt-dlp</span> لأرشفة عدد كبير من الروابط مع تنظيم كامل:
+        </p>
+        <ul class="list-disc pr-5 text-sm md:text-base text-slate-200 space-y-1">
+          <li>قراءة الروابط من ملف (مثل <span class="font-mono">urls.txt</span>) أو من الواجهة أدناه.</li>
+          <li><strong class="text-emerald-300">تنظيف معاملات ?si= وباقي تتبّعات يوتيوب + تحويل <span class="font-mono">youtu.be</span> إلى <span class="font-mono">youtube.com</span>.</strong></li>
+          <li>تحميل الفيديو + الصوت بأعلى جودة مع استكمال تلقائي.</li>
+          <li>حفظ ميتاداتا (JSON، ترجمة، صورة مصغرة) اختيارياً.</li>
+          <li>سجل (log) لعمليات النجاح والفشل مع إمكانية الاستكمال.</li>
+          <li><strong class="text-emerald-300">توليد وسوم متعددة: وسم الموقع (#youtube)، وسم المسار (مثل #shorts)، ومجلد تلقائي.</strong></li>
+          <li><strong class="text-emerald-300">تصنيف زمني لكل رابط (يوم/شهر/سنة + الأسبوع)، مع خيار "بدون تاريخ".</strong></li>
+        </ul>
+
+        <div class="mt-4">
+          <h3 class="text-lg font-semibold text-emerald-300 mb-2">أوامر تشغيل نموذجية</h3>
+          <div class="bg-black/70 border border-slate-800 rounded-lg p-3 text-xs md:text-sm font-mono text-emerald-100 overflow-auto">
+            <p class="mb-1"># مثال لتشغيل الأداة:</p>
+            <p>python youtube_archiver.py \</p>
+            <p class="pl-4">--urls-file urls.txt \</p>
+            <p class="pl-4">--output-dir ./archive \</p>
+            <p class="pl-4">--max-concurrent 2 \</p>
+            <p class="pl-4">--format bestvideo+bestaudio</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- مولّد كود بايثون مبسّط -->
+      <section class="bg-slate-900/80 border border-emerald-700/40 rounded-xl p-4 md:p-6 space-y-4">
+        <h2 class="text-xl font-semibold text-emerald-300">2. توليد كود الأداة حسب إعداداتك</h2>
+        <p class="text-sm text-slate-200">عدّل الإعدادات ثم انسخ كود بايثون الناتج بالأسفل.</p>
+
+        <form id="config-form" class="space-y-3 text-sm">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1">
+              <span>اسم ملف الروابط</span>
+              <input id="urlsFile" type="text" value="urls.txt" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span>مجلد الإخراج</span>
+              <input id="outputDir" type="text" value="archive" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label class="flex flex-col gap-1">
+              <span>أقصى تحميل متوازي</span>
+              <input id="maxConcurrent" type="number" min="1" max="10" value="2" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span>صيغة التحميل (format)</span>
+              <input id="format" type="text" value="bestvideo+bestaudio/best" class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            </label>
+          </div>
+
+          <label class="flex items-center gap-2 mt-1">
+            <input id="writeMetadata" type="checkbox" checked class="w-4 h-4 text-emerald-500 border-slate-600 bg-slate-950 rounded" />
+            <span>حفظ ميتاداتا الفيديو (JSON + ترجمة + صورة)</span>
+          </label>
+
+          <button type="button" id="generateBtn" class="mt-2 inline-flex items-center justify-center px-4 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-semibold text-xs hover:bg-emerald-400 transition-colors">
+            توليد / تحديث كود البايثون
+          </button>
+        </form>
+
+        <div class="space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-semibold text-emerald-300">الكود الناتج (youtube_archiver.py)</h3>
+            <button id="copyBtn" class="px-3 py-1 rounded bg-slate-800 text-xs hover:bg-slate-700 border border-slate-600">نسخ الكود</button>
+          </div>
+          <textarea id="codeOutput" rows="16" readonly class="w-full text-xs md:text-[11px] font-mono bg-black/80 border border-slate-800 rounded-lg p-3 text-emerald-100 overflow-auto"></textarea>
+          <p id="copyStatus" class="text-[11px] text-emerald-400 h-4"></p>
+        </div>
+      </section>
+
+      <!-- إدارة الروابط المباشرة -->
+      <section class="bg-gradient-to-br from-slate-900 to-slate-900/50 border border-emerald-600/30 rounded-xl p-4 md:p-6 space-y-4 lg:col-span-2">
+        <h2 class="text-xl font-semibold text-emerald-300 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path></svg>
+          قاعدة بيانات الروابط
+        </h2>
+        <p class="text-sm text-slate-200">
+          <strong class="text-emerald-300">قاعدة بيانات الروابط:</strong> كل الروابط تُحفظ في الجدول أدناه. استخدم خانة الإدخال لإضافة روابط جديدة، وسيتم تنظيفها وتصنيفها تلقائياً ثم إضافتها للقاعدة. يمكنك <strong class="text-blue-300">تصدير</strong> قاعدة البيانات كملف JSON للاحتفاظ بها، و<strong class="text-yellow-300">استيرادها</strong> لاحقاً من أي جهاز.
+        </p>
+
+        <div class="grid md:grid-cols-2 gap-3 text-xs">
+          <div class="bg-blue-950/30 border border-blue-700/40 rounded-lg p-3 text-blue-100 space-y-1">
+            <strong class="text-blue-300">مثال تلقائي كامل:</strong>
+            <p>الرابط: <code class="bg-slate-900/50 px-1 py-0.5 rounded text-[10px]">https://youtube.com/shorts/myOWyk7_8Aw?si=xyz</code></p>
+            <p>بعد التنظيف: <code class="bg-slate-900/50 px-1 py-0.5 rounded text-[10px]">https://youtube.com/shorts/myOWyk7_8Aw</code></p>
+            <p>وسم الموقع: <span class="text-emerald-300">#youtube</span> — المجلد: <span class="text-emerald-300">shorts</span> — الوسم التلقائي: <span class="text-emerald-300">#shorts</span></p>
+            <p>التاريخ: يتم استخراجه من الرابط إن وجد وإلا يوضع <span class="text-amber-300">"بدون تاريخ"</span>.</p>
+          </div>
+          <div class="bg-amber-950/30 border border-amber-700/40 rounded-lg p-3 text-amber-100 space-y-1">
+            <strong>ملاحظات مهمة:</strong>
+            <ul class="list-disc pr-4 space-y-0.5">
+              <li>لا يتم تغيير دومين يوتيوب، فقط إزالة معاملات مثل <span class="font-mono">?si=</span>.</li>
+              <li>إذا لم يكن هناك مسار صالح بعد <span class="font-mono">youtube.com/</span> (مثل <code>/_gYIWm_v19U</code>) يتم تصنيفه تلقائياً ضمن <span class="text-emerald-300">#videos</span>.</li>
+              <li>يمكن إضافة أوسمة مخصصة، وتحديد تاريخ يدوي لفرز أسبوع/يوم.</li>
+              <li>تصدير/استيراد JSON يحافظ على الوسوم والمجلد والموقع والتاريخ.</li>
+            </ul>
+          </div>
+        </div>
+
+        <textarea id="urlsInput" rows="5" placeholder="ألصق الروابط الجديدة هنا (كل سطر = رابط)&#10;سيتم إضافتها لقاعدة البيانات أدناه&#10;https://www.youtube.com/watch?v=VIDEO_ID" class="w-full text-xs font-mono bg-slate-950 border border-slate-700 rounded-lg p-3 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+        
+        <div class="bg-slate-900/50 border border-slate-700 rounded-lg p-3 text-xs text-slate-300">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <strong class="text-emerald-300">طريقة العمل:</strong>
+          </div>
+          <ul class="list-disc pr-5 space-y-1 text-slate-400">
+            <li><strong class="text-slate-200">خانة الإدخال أعلاه:</strong> لإضافة روابط جديدة فقط (ستُفرغ بعد الإضافة)</li>
+            <li><strong class="text-slate-200">الجدول أدناه:</strong> هو قاعدة البيانات الفعلية التي تحتفظ بكل الروابط</li>
+            <li><strong class="text-slate-200">التصدير:</strong> يحفظ كل البيانات من الجدول في ملف JSON</li>
+            <li><strong class="text-slate-200">الاستيراد:</strong> يحمّل بيانات من ملف JSON إلى الجدول</li>
+          </ul>
+        </div>
+
+        <div class="grid gap-3 md:grid-cols-[1fr_auto]">
+          <div class="flex flex-row md:flex-col gap-2">
+            <button id="cleanUrlsBtn" class="flex-1 md:flex-none px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold text-xs hover:bg-emerald-500 transition-colors whitespace-nowrap">
+              إضافة الروابط للقائمة
+            </button>
+            <button id="saveUrlsBtn" class="flex-1 md:flex-none px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold text-xs hover:bg-blue-500 transition-colors whitespace-nowrap">
+              حفظ كـ urls.txt
+            </button>
+            <button id="clearUrlsBtn" class="flex-1 md:flex-none px-4 py-2 rounded-lg bg-slate-700 text-white font-semibold text-xs hover:bg-slate-600 transition-colors whitespace-nowrap">
+              مسح الكل
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-2 items-center">
+            <button id="exportDataBtn" class="px-4 py-2 rounded-lg bg-purple-600 text-white font-semibold text-xs hover:bg-purple-500 transition-colors">تصدير بيانات الوسوم (JSON)</button>
+            <button id="importDataBtn" class="px-4 py-2 rounded-lg bg-yellow-500 text-slate-900 font-semibold text-xs hover:bg-yellow-400 transition-colors">استيراد بيانات</button>
+            <button id="fetchTitlesBtn" class="px-4 py-2 rounded-lg bg-rose-600 text-white font-semibold text-xs hover:bg-rose-500 transition-colors">جلب عناوين الفيديوهات من يوتيوب</button>
+            <input type="file" id="importDataInput" accept="application/json" class="hidden" />
+          </div>
+          <p class="mt-2 text-[11px] text-slate-400">
+            ملاحظة: يتم حفظ كل بيانات الروابط (العناوين، الوسوم، المجلدات، والتاريخ) داخل ملف <span class="font-mono bg-slate-900 px-1 py-0.5 rounded">JSON</span> واحد يمكنك تنزيله عند الضغط على زر <span class="text-purple-300">"تصدير بيانات الوسوم"</span>، ثم الاحتفاظ به على جهازك دون أن تُحذف البيانات من الصفحة. لاحقاً يمكنك تعديل هذا الملف أو نقله إلى جهاز آخر ثم استخدام زر <span class="text-yellow-300">"استيراد بيانات"</span> لإعادة تحميله إلى الواجهة ومواصلة العمل عليه. شكل الملف مشابه للملف النموذجي <span class="underline underline-offset-2"><a href="links_data.json" target="_blank">links_data.json</a></span> المرفق مع هذه الصفحة.
+          </p>
+        </div>
+
+        <div class="bg-emerald-950/30 border border-emerald-700/40 rounded-lg p-3 text-xs text-emerald-100">
+          <strong class="text-emerald-300">💡 ملاحظات:</strong>
+          <ul class="list-disc pr-5 mt-1 space-y-0.5 text-slate-300">
+            <li>الجدول أدناه هو <strong>قاعدة البيانات الفعلية</strong> - كل تعديل يُحفظ تلقائياً</li>
+            <li>يمكنك حذف أي رابط بالضغط على زر 🗑️ بجانبه</li>
+            <li>استخدم <strong class="text-purple-300">تصدير JSON</strong> لحفظ نسخة احتياطية على جهازك</li>
+            <li>استخدم <strong class="text-yellow-300">استيراد</strong> لتحميل بيانات من ملف JSON سابق</li>
+          </ul>
+        </div>
+
+        <div id="urlsStats" class="text-xs text-slate-400 space-y-1"></div>
+        <div id="urlsNotifications" class="text-[11px] h-4 mt-1"></div>
+        <div id="urlsTableContainer" class="text-xs text-slate-300"></div>
+      </section>
+
+      <!-- شرح الكود -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-xl p-4 md:p-6 space-y-3 lg:col-span-2">
+        <h2 class="text-xl font-semibold text-emerald-300">4. شرح سريع لما يفعله السكربت</h2>
+        <ol class="list-decimal pr-5 text-sm md:text-base text-slate-200 space-y-1.5">
+          <li>يقرأ ملف الروابط (كل سطر = رابط فيديو أو قائمة أو قناة).</li>
+          <li>ينظف الملف من السطور الفارغة والتعليقات.</li>
+          <li>ينشئ مجلد الأرشيف إن لم يكن موجوداً.</li>
+          <li>لكل رابط، يشغّل yt-dlp بالإعدادات المختارة ويستكمل تلقائياً.</li>
+          <li>يحاول الاستمرار حتى لو حدثت أخطاء لرابط معيّن.</li>
+          <li>يسجل النتائج في ملف <span class="font-mono">archive.log</span> داخل مجلد الإخراج.</li>
+        </ol>
+
+        <div class="mt-3 grid gap-3 md:grid-cols-2 text-xs md:text-sm text-slate-200">
+          <div class="bg-slate-950/70 border border-slate-800 rounded-lg p-3">
+            <h3 class="font-semibold text-emerald-300 mb-1">ملف الروابط (urls.txt مثال):</h3>
+            <pre class="whitespace-pre-wrap font-mono text-[11px] md:text-xs"># يمكن أن يحتوي على فيديوهات، قوائم، قنوات
+https://www.youtube.com/watch?v=VIDEO_ID_1
+https://www.youtube.com/watch?v=VIDEO_ID_2
+
+# قائمة تشغيل كاملة
+https://www.youtube.com/playlist?list=PLAYLIST_ID
+
+# قناة كاملة (سيتم أرشفة كل الفيديوهات)
+https://www.youtube.com/@channel_name</pre>
+          </div>
+          <div class="bg-slate-950/70 border border-slate-800 rounded-lg p-3">
+            <h3 class="font-semibold text-emerald-300 mb-1">تشغيل السكربت:</h3>
+            <pre class="whitespace-pre-wrap font-mono text-[11px] md:text-xs"># تثبيت yt-dlp (مرة واحدة)
+pip install yt-dlp
+
+# تشغيل الأداة بالإعدادات الافتراضية
+python youtube_archiver.py
+
+# تشغيل مع تحديد ملف مختلف
+python youtube_archiver.py \
+  --urls-file my_urls.txt \
+  --output-dir D:/YouTubeArchive \
+  --max-concurrent 4</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    function buildPythonCode(config) {
+      const { urlsFile, outputDir, maxConcurrent, format, writeMetadata } = config;
+      const metadataFlags = writeMetadata
+        ? "        'writeinfojson': True,\n        'writesubtitles': True,\n        'writeautomaticsub': True,\n        'writethumbnail': True,"
+        : "";
+
+      const code = `#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+أداة بسيطة لأرشفة فيديوهات يوتيوب باستخدام yt-dlp
+
+الخصائص:
+- قراءة الروابط من ملف (${urlsFile})
+- تحميل الفيديو والصوت بصيغة: ${format}
+- إمكانية استكمال التحميل إذا انقطع
+- حفظ ملف سجل (log) لكل عملية تنزيل
+${writeMetadata ? "- حفظ ميتاداتا الفيديو (JSON + عنوان + وصف + ترجمة إن وجدت)" : ""}
+
+طريقة الاستخدام:
+    python youtube_archiver.py \
+        --urls-file ${urlsFile} \
+        --output-dir ${outputDir} \
+        --max-concurrent ${maxConcurrent} \
+        --format "${format}"
+"""
+
+import argparse
+import concurrent.futures
+import datetime as dt
+import os
+import sys
+from pathlib import Path
+
+try:
+    from yt_dlp import YoutubeDL
+except ImportError:
+    print("[!] مكتبة yt-dlp غير مثبتة. ثبّتها بالأمر:")
+    print("    pip install yt-dlp")
+    sys.exit(1)
+
+
+def log(message: str, *, log_file: Path | None = None) -> None:
+    """طباعة وحفظ رسالة في ملف السجل."""
+    now = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"[{now}] {message}"
+    print(line)
+    if log_file is not None:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with log_file.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+
+
+def load_urls(urls_path: Path) -> list[str]:
+    """قراءة الروابط من ملف وتجاهل السطور الفارغة والتعليقات."""
+    if not urls_path.exists():
+        raise FileNotFoundError(f"ملف الروابط غير موجود: {urls_path}")
+
+    urls: list[str] = []
+    with urls_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            urls.append(line)
+    return urls
+
+
+def build_ydl_opts(output_dir: Path, fmt: str) -> dict:
+    """إعداد خيارات yt-dlp."""
+    outtmpl = str(output_dir / "%(uploader)s/%(upload_date)s - %(title)s [%(id)s].%(ext)s")
+
+    ydl_opts: dict = {
+        'outtmpl': outtmpl,
+        'format': fmt,
+        'noplaylist': False,
+        'ignoreerrors': True,
+        'retries': 5,
+        'fragment_retries': 10,
+        'concurrent_fragment_downloads': 5,
+        'merge_output_format': 'mp4',
+        'continuedl': True,
+        'noprogress': False,
+        'logger': None,
+        'quiet': False,
+    }
+${metadataFlags}
+    return ydl_opts
+
+
+def download_one(index: int, url: str, output_dir: Path, fmt: str, log_file: Path) -> None:
+    """تحميل رابط واحد (فيديو / قائمة تشغيل)."""
+    try:
+        log(f"[{index}] بدء التحميل: {url}", log_file=log_file)
+        ydl_opts = build_ydl_opts(output_dir, fmt)
+        with YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        log(f"[{index}] تم التحميل بنجاح", log_file=log_file)
+    except Exception as e:
+        log(f"[{index}] فشل التحميل: {url} | الخطأ: {e}", log_file=log_file)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="أداة أرشفة يوتيوب")
+    parser.add_argument("--urls-file", default="${urlsFile}", help="ملف الروابط (سطر لكل رابط)")
+    parser.add_argument("--output-dir", default="${outputDir}", help="مجلد الأرشيف")
+    parser.add_argument("--max-concurrent", type=int, default=${maxConcurrent}, help="أقصى عدد تحميلات متوازية")
+    parser.add_argument("--format", default="${format}", help="صيغة التحميل (format)")
+
+    args = parser.parse_args()
+
+    urls_path = Path(args.urls_file)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    log_file = output_dir / "archive.log"
+
+    try:
+        urls = load_urls(urls_path)
+    except FileNotFoundError as e:
+        log(str(e))
+        sys.exit(1)
+
+    if not urls:
+        log("لا يوجد أي روابط في ملف الروابط.", log_file=log_file)
+        return
+
+    log(f"تم تحميل {len(urls)} رابط(اً) من {urls_path}", log_file=log_file)
+    max_workers = max(1, int(args.max_concurrent))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = []
+        for i, url in enumerate(urls, start=1):
+            futures.append(executor.submit(download_one, i, url, output_dir, args.format, log_file))
+
+        for future in concurrent.futures.as_completed(futures):
+            _ = future.result()
+
+    log("انتهت عملية الأرشفة.", log_file=log_file)
+
+
+if __name__ == "__main__":
+    main()
+`;
+
+      return code;
+    }
+
+    function updateCode() {
+      const config = {
+        urlsFile: document.getElementById('urlsFile').value.trim() || 'urls.txt',
+        outputDir: document.getElementById('outputDir').value.trim() || 'archive',
+        maxConcurrent: Number(document.getElementById('maxConcurrent').value) || 2,
+        format: document.getElementById('format').value.trim() || 'bestvideo+bestaudio/best',
+        writeMetadata: document.getElementById('writeMetadata').checked,
+      };
+      document.getElementById('codeOutput').value = buildPythonCode(config);
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', updateCode);
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const textarea = document.getElementById('codeOutput');
+      const status = document.getElementById('copyStatus');
+      textarea.select();
+      textarea.setSelectionRange(0, 999999);
+      try {
+        await navigator.clipboard.writeText(textarea.value);
+        status.textContent = 'تم نسخ الكود إلى الحافظة.';
+        setTimeout(() => (status.textContent = ''), 2500);
+      } catch (e) {
+        status.textContent = 'تعذر النسخ تلقائياً، انسخ الكود يدوياً.';
+      }
+    });
+
+    updateCode();
+
+    // ============ إدارة الروابط المتقدمة ============
+    let urlEntries = [];
+
+    const STORAGE_KEY = 'youtube_archiver_links_v1';
+
+    function persistEntriesToLocalStorage() {
+      try {
+        const payload = {
+          generatedAt: new Date().toISOString(),
+          total: urlEntries.length,
+          entries: urlEntries,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        console.warn('تعذر حفظ البيانات في المتصفح:', e);
+      }
+    }
+
+    function loadEntriesFromLocalStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const entriesArray = Array.isArray(parsed) ? parsed : parsed.entries;
+        if (!Array.isArray(entriesArray) || !entriesArray.length) return;
+        urlEntries = entriesArray.map((item) => ({
+          url: item.url,
+          tag: item.tag,
+          folder: item.folder,
+          siteTag: item.siteTag,
+          extraTags: item.extraTags || '',
+          type: item.type || classifyUrlType(item.url || ''),
+          dateValue: item.dateValue || '',
+          dayLabel: item.dayLabel || 'بدون تاريخ',
+          weekLabel: item.weekLabel || 'بدون تاريخ',
+          title: item.title || '',
+        }));
+        document.getElementById('urlsInput').value = urlEntries.map(e => e.url).join('\n');
+        updateUrlsStats(urlEntries);
+        renderEntriesTable();
+      } catch (e) {
+        console.warn('تعذر تحميل البيانات المخزنة:', e);
+      }
+    }
+
+    const trackingParams = ['si', 'feature', 'fbclid', 'gclid', 'kw', 'spm', 'utm_source', 'utm_medium', 'utm_campaign'];
+    const importantParams = ['v', 'list', 't', 'index'];
+
+    function cleanYouTubeUrl(url) {
+      try {
+        const trimmed = url.trim();
+        if (!trimmed) return '';
+        let urlObj = new URL(trimmed);
+        const originalSearch = new URLSearchParams(urlObj.search);
+        const hostname = urlObj.hostname.toLowerCase();
+
+        if (hostname === 'youtu.be' || hostname === 'www.youtu.be') {
+          const videoId = urlObj.pathname.replace('/', '');
+          if (videoId) {
+            const newUrl = new URL('https://youtube.com/watch');
+            newUrl.searchParams.set('v', videoId);
+            ['t', 'list', 'index'].forEach(param => {
+              if (originalSearch.has(param)) newUrl.searchParams.set(param, originalSearch.get(param));
+            });
+            urlObj = newUrl;
+          }
+        }
+
+        trackingParams.forEach(param => urlObj.searchParams.delete(param));
+
+        const filteredParams = new URLSearchParams();
+        importantParams.forEach(param => {
+          if (urlObj.searchParams.has(param)) {
+            filteredParams.set(param, urlObj.searchParams.get(param));
+          }
+        });
+        urlObj.search = filteredParams.toString();
+
+        return urlObj.toString().replace(/\/$/, '');
+      } catch (e) {
+        return url.trim();
+      }
+    }
+
+    function classifyUrlType(url) {
+      const lower = url.toLowerCase();
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+        
+        // تصنيف روابط يوتيوب
+        if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+          if (lower.includes('/shorts/')) return 'short';
+          if (lower.includes('playlist?') || lower.includes('list=')) return 'playlist';
+          if (lower.includes('/@') || lower.includes('/channel/') || lower.includes('/c/')) return 'channel';
+          if (lower.includes('watch?v=') || lower.includes('youtu.be/')) return 'video';
+          return 'video';
+        }
+        
+        // تصنيف المواقع الأخرى
+        return 'webpage';
+      } catch (e) {
+        return 'other';
+      }
+    }
+
+    // دالة لاستخراج المسار الأول الصالح للمواقع غير يوتيوب
+    function getValidPathSegment(pathname) {
+      const segments = pathname.split('/').filter(Boolean);
+      if (!segments.length) return null;
+      
+      const firstSegment = segments[0];
+      
+      // تجاهل المعرّفات الطويلة أو العشوائية (مثل 1809.00219 أو abc123xyz)
+      // المسار الصالح يجب أن يكون كلمة واضحة وليس معرّف
+      if (/^[\d.]+$/.test(firstSegment)) return null; // أرقام فقط
+      if (/^[a-zA-Z0-9_-]{10,}$/.test(firstSegment) && !/[aeiou]/i.test(firstSegment)) return null; // معرّف طويل بدون حروف علة
+      if (firstSegment.length < 2) return null; // قصير جداً
+      
+      // قائمة المسارات الشائعة المقبولة
+      const commonPaths = [
+        'abs', 'pdf', 'article', 'articles', 'post', 'posts', 'blog', 'news',
+        'docs', 'documentation', 'wiki', 'help', 'support', 'faq',
+        'video', 'videos', 'watch', 'embed', 'channel', 'user', 'playlist',
+        'search', 'results', 'explore', 'trending', 'popular',
+        'category', 'categories', 'tag', 'tags', 'topic', 'topics',
+        'page', 'pages', 'view', 'read', 'show', 'detail', 'details',
+        'product', 'products', 'item', 'items', 'shop', 'store',
+        'download', 'downloads', 'file', 'files', 'media',
+        'gallery', 'image', 'images', 'photo', 'photos', 'picture', 'pictures',
+        'music', 'audio', 'sound', 'podcast', 'episode',
+        'course', 'courses', 'lesson', 'lessons', 'tutorial', 'tutorials',
+        'paper', 'papers', 'research', 'publication', 'publications',
+        'project', 'projects', 'repo', 'repository', 'code',
+        'forum', 'thread', 'discussion', 'comment', 'comments',
+        'profile', 'account', 'settings', 'dashboard',
+        'api', 'v1', 'v2', 'v3'
+      ];
+      
+      const lowerSegment = firstSegment.toLowerCase();
+      if (commonPaths.includes(lowerSegment)) {
+        return firstSegment;
+      }
+      
+      // إذا كان يبدو ككلمة عادية (يحتوي على حروف ولا يبدو كمعرّف)
+      if (/^[a-zA-Z][a-zA-Z0-9_-]{1,20}$/.test(firstSegment) && /[aeiou]/i.test(firstSegment)) {
+        return firstSegment;
+      }
+      
+      return null;
+    }
+
+    function getSiteTag(hostname) {
+      const cleanHost = hostname.replace(/^www\./i, '').toLowerCase();
+      if (cleanHost.endsWith('youtube.com') || cleanHost.endsWith('youtu.be')) {
+        return '#youtube';
+      }
+      const base = cleanHost.split('.')[0] || 'site';
+      return `#${base}`;
+    }
+
+    function shouldUseYouTubeSegment(segment) {
+      if (!segment) return false;
+      const normalized = segment.toLowerCase();
+      if (normalized.startsWith('@')) return true;
+      const allowed = ['shorts', 'playlist', 'channel', 'user', 'c', 'live', 'feed', 'results', 'gaming'];
+      return allowed.includes(normalized);
+    }
+
+    function normalizeTagValue(value) {
+      if (typeof value !== 'string') return '';
+      let trimmed = value.trim();
+      if (!trimmed) return '';
+      trimmed = trimmed.replace(/^#+/, '');
+      trimmed = trimmed.replace(/\s+/g, '-');
+      if (!trimmed) return '';
+      return `#${trimmed}`;
+    }
+
+    function normalizeFolderValue(value) {
+      if (typeof value !== 'string') return 'videos';
+      const trimmed = value.trim();
+      return trimmed || 'videos';
+    }
+
+    function normalizeExtraTags(value) {
+      if (typeof value !== 'string') return '';
+      const parts = value
+        .split(/[\s,]+/)
+        .map(part => normalizeTagValue(part))
+        .filter(Boolean);
+      return Array.from(new Set(parts)).join(' ');
+    }
+
+    const datePatterns = [
+      { regex: /(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})/, order: ['year', 'month', 'day'] },
+      { regex: /(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/, order: ['day', 'month', 'year'] },
+      { regex: /(\d{4})(\d{2})(\d{2})/, order: ['year', 'month', 'day'] },
+    ];
+
+    function buildDateFromMatch(match, order) {
+      const parts = {};
+      order.forEach((key, idx) => parts[key] = Number(match[idx + 1]));
+      const { year, month, day } = parts;
+      if (!year || !month || !day) return null;
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      const date = new Date(year, month - 1, day);
+      if (isNaN(date.getTime())) return null;
+      return date;
+    }
+
+    function detectDateFromUrl(url) {
+      try {
+        const urlObj = new URL(url);
+        const candidates = [urlObj.pathname, urlObj.search, urlObj.hash].filter(Boolean);
+        for (const candidate of candidates) {
+          for (const pattern of datePatterns) {
+            const match = candidate.match(pattern.regex);
+            if (match) {
+              const date = buildDateFromMatch(match, pattern.order);
+              if (date) return date;
+            }
+          }
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function formatDayLabel(date) {
+      return new Intl.DateTimeFormat('ar-EG', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+    }
+
+    function getISOWeek(date) {
+      const workingDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = workingDate.getUTCDay() || 7;
+      workingDate.setUTCDate(workingDate.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(workingDate.getUTCFullYear(), 0, 1));
+      const diff = (workingDate - yearStart) / 86400000 + 1;
+      return Math.ceil(diff / 7);
+    }
+
+    function formatWeekLabel(date) {
+      const week = getISOWeek(date);
+      return `الأسبوع ${week} - ${date.getFullYear()}`;
+    }
+
+    function applyDateValue(entry, isoValue) {
+      if (!isoValue) {
+        entry.dateValue = '';
+        entry.dayLabel = 'بدون تاريخ';
+        entry.weekLabel = 'بدون تاريخ';
+        return;
+      }
+      const date = new Date(`${isoValue}T00:00:00`);
+      if (isNaN(date.getTime())) {
+        entry.dateValue = '';
+        entry.dayLabel = 'بدون تاريخ';
+        entry.weekLabel = 'بدون تاريخ';
+        return;
+      }
+      entry.dateValue = isoValue;
+      entry.dayLabel = formatDayLabel(date);
+      entry.weekLabel = formatWeekLabel(date);
+    }
+
+    function isValidDateValue(value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(new Date(`${value}T00:00:00`).getTime());
+    }
+
+    function extractTagAndFolder(url) {
+      try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+        const siteTag = getSiteTag(urlObj.hostname);
+        const segments = urlObj.pathname.split('/').filter(Boolean).map(seg => decodeURIComponent(seg));
+        
+        let folderSegment = 'general';
+        let primaryTag = '#general';
+
+        // معالجة روابط يوتيوب
+        if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+          const firstSegment = (segments[0] || '').toLowerCase();
+          if (shouldUseYouTubeSegment(firstSegment)) {
+            folderSegment = segments[0];
+            primaryTag = normalizeTagValue(folderSegment);
+          } else {
+            folderSegment = 'videos';
+            primaryTag = '#videos';
+          }
+        }
+        // معالجة المواقع الأخرى (مثل arxiv.org/abs/1809.00219)
+        else {
+          const validSegment = getValidPathSegment(urlObj.pathname);
+          if (validSegment) {
+            folderSegment = validSegment;
+            primaryTag = normalizeTagValue(validSegment);
+          } else {
+            // إذا لم يوجد مسار صالح، نستخدم اسم الموقع كمجلد
+            const siteName = hostname.split('.')[0];
+            folderSegment = siteName || 'general';
+            primaryTag = '#' + folderSegment;
+          }
+        }
+
+        return { 
+          primaryTag: primaryTag || '#general', 
+          folder: folderSegment || 'general', 
+          siteTag 
+        };
+      } catch (e) {
+        return { primaryTag: '#general', folder: 'general', siteTag: '#site' };
+      }
+    }
+
+    function buildEntry(url) {
+      const { primaryTag, folder, siteTag } = extractTagAndFolder(url);
+      const detectedDate = detectDateFromUrl(url);
+      const entry = {
+        url,
+        tag: primaryTag,
+        folder,
+        siteTag,
+        extraTags: '',
+        type: classifyUrlType(url),
+        dateValue: '',
+        dayLabel: 'بدون تاريخ',
+        weekLabel: 'بدون تاريخ',
+        title: '',
+      };
+
+      if (detectedDate) {
+        const iso = detectedDate.toISOString().split('T')[0];
+        applyDateValue(entry, iso);
+      }
+
+      return entry;
+    }
+
+    function escapeHtml(str) {
+      if (typeof str !== 'string') return '';
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return str.replace(/[&<>"']/g, (char) => map[char]);
+    }
+
+    function getUrlTypeBadge(type) {
+      const meta = {
+        video: { label: 'فيديو', color: 'bg-blue-900/40 text-blue-300 border border-blue-700/60' },
+        playlist: { label: 'قائمة تشغيل', color: 'bg-purple-900/40 text-purple-300 border border-purple-700/60' },
+        channel: { label: 'قناة', color: 'bg-yellow-900/30 text-yellow-200 border border-yellow-700/60' },
+        short: { label: 'شورت', color: 'bg-pink-900/40 text-pink-200 border border-pink-700/60' },
+        webpage: { label: 'صفحة ويب', color: 'bg-teal-900/40 text-teal-300 border border-teal-700/60' },
+        other: { label: 'أخرى', color: 'bg-slate-800 text-slate-200 border border-slate-600/70' },
+      };
+      const info = meta[type] || meta.other;
+      return `<span class="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] ${info.color}">${info.label}</span>`;
+    }
+
+    function setEntries(newEntries) {
+      urlEntries = newEntries;
+      updateUrlsStats(urlEntries);
+      renderEntriesTable();
+      persistEntriesToLocalStorage();
+    }
+
+    function renderEntriesTable() {
+      const container = document.getElementById('urlsTableContainer');
+      if (!urlEntries.length) {
+        container.innerHTML = '<p class="text-xs text-slate-500">لا توجد بيانات مصنفة حالياً. اضغط "تنظيف الروابط" أو استورد ملف JSON.</p>';
+        return;
+      }
+
+      const rows = urlEntries.map((entry, index) => `
+        <tr class="border-b border-slate-900/70 hover:bg-slate-900/40 align-top">
+          <td class="py-3 px-2 text-center text-[11px] text-slate-500">${index + 1}</td>
+          <td class="py-3 px-2 align-top">
+            <a href="${escapeHtml(entry.url)}" target="_blank" class="text-[11px] break-all text-emerald-200 hover:text-emerald-300 underline underline-offset-2 decoration-dotted decoration-emerald-500">
+              ${escapeHtml(entry.url)}
+            </a>
+            <div class="mt-1 flex flex-wrap gap-1 text-[10px]">
+              <span class="px-2 py-0.5 rounded-full bg-slate-900/60 border border-slate-700 text-emerald-300">${escapeHtml(entry.siteTag)}</span>
+            </div>
+            <div class="mt-1 text-[10px] text-slate-300">
+              العنوان: <span class="text-slate-100">${escapeHtml(entry.title || '— لم يتم جلب العنوان بعد')}</span>
+            </div>
+          </td>
+          <td class="py-3 px-2">
+            <label class="block text-[10px] mb-1 text-slate-400">الوسم الرئيسي</label>
+            <input type="text" value="${escapeHtml(entry.tag)}" data-index="${index}" data-field="tag" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            <label class="block text-[10px] mt-2 mb-1 text-slate-400">أوسمة إضافية</label>
+            <input type="text" value="${escapeHtml(entry.extraTags || '')}" data-index="${index}" data-field="extraTags" placeholder="#تعليم #أرشفة" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+          </td>
+          <td class="py-3 px-2">
+            <label class="block text-[10px] mb-1 text-slate-400">المجلد Folder</label>
+            <input type="text" value="${escapeHtml(entry.folder)}" data-index="${index}" data-field="folder" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+          </td>
+          <td class="py-3 px-2">
+            <label class="block text-[10px] mb-1 text-slate-400">تاريخ مخصص</label>
+            <input type="date" value="${escapeHtml(entry.dateValue)}" data-index="${index}" data-field="dateValue" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+            <div class="mt-2 space-y-0.5 text-[10px] text-slate-400" data-date-summary="${index}">
+              <div>اليوم: <span class="text-emerald-300">${escapeHtml(entry.dayLabel)}</span></div>
+              <div>الأسبوع: <span class="text-emerald-300">${escapeHtml(entry.weekLabel)}</span></div>
+            </div>
+          </td>
+          <td class="py-3 px-2 text-center">
+            ${getUrlTypeBadge(entry.type)}
+          </td>
+          <td class="py-3 px-2 text-center">
+            <button data-delete-index="${index}" class="px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-red-300 text-[10px] border border-red-700/50 transition-colors" title="حذف الرابط">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="overflow-auto border border-slate-800 rounded-lg">
+          <table class="min-w-full text-left">
+            <thead class="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-950/90">
+              <tr>
+                <th class="py-2 px-2">#</th>
+                <th class="py-2 px-2">الرابط + وسم الموقع</th>
+                <th class="py-2 px-2">الوسوم</th>
+                <th class="py-2 px-2">المجلد</th>
+                <th class="py-2 px-2">التاريخ / الأسبوع</th>
+                <th class="py-2 px-2 text-center">تصنيف</th>
+                <th class="py-2 px-2 text-center">حذف</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function updateDateSummaryDisplay(index) {
+      const entry = urlEntries[index];
+      const summary = document.querySelector(`[data-date-summary="${index}"]`);
+      if (entry && summary) {
+        summary.innerHTML = `
+          <div>اليوم: <span class="text-emerald-300">${escapeHtml(entry.dayLabel)}</span></div>
+          <div>الأسبوع: <span class="text-emerald-300">${escapeHtml(entry.weekLabel)}</span></div>
+        `;
+      }
+    }
+
+    function updateUrlsStats(entries) {
+      const stats = document.getElementById('urlsStats');
+      if (!entries.length) {
+        stats.innerHTML = '';
+        return;
+      }
+
+      const totals = { video: 0, playlist: 0, channel: 0, short: 0, other: 0 };
+      const tagCounts = new Map();
+      const siteCounts = new Map();
+      const weekCounts = new Map();
+      let undated = 0;
+
+      entries.forEach((entry) => {
+        totals[entry.type] = (totals[entry.type] || 0) + 1;
+        const tagsToCount = [entry.tag, entry.siteTag];
+        const extras = (entry.extraTags || '').split(/[\s]+/).filter(Boolean);
+        tagsToCount.push(...extras);
+        tagsToCount.filter(Boolean).forEach(tag => {
+          tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+        });
+        siteCounts.set(entry.siteTag, (siteCounts.get(entry.siteTag) || 0) + 1);
+        if (!entry.dateValue) {
+          undated += 1;
+        } else {
+          weekCounts.set(entry.weekLabel, (weekCounts.get(entry.weekLabel) || 0) + 1);
+        }
+      });
+
+      const topTags = Array.from(tagCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([tag, count]) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 text-[11px]">${escapeHtml(tag)} <span class="text-slate-400">(${count})</span></span>`)
+        .join(' ');
+
+      const topSites = Array.from(siteCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([site, count]) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-blue-300 text-[11px]">${escapeHtml(site)} <span class="text-slate-400">(${count})</span></span>`)
+        .join(' ');
+
+      const topWeeks = Array.from(weekCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([week, count]) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-amber-300 text-[11px]">${escapeHtml(week)} <span class="text-slate-400">(${count})</span></span>`)
+        .join(' ');
+
+      stats.innerHTML = `
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="px-2 py-1 bg-slate-800 rounded">إجمالي: <strong class="text-emerald-400">${entries.length}</strong></span>
+          <span class="px-2 py-1 bg-slate-800 rounded">فيديوهات: <strong class="text-blue-400">${totals.video}</strong></span>
+          <span class="px-2 py-1 bg-slate-800 rounded">قوائم تشغيل: <strong class="text-purple-400">${totals.playlist}</strong></span>
+          <span class="px-2 py-1 bg-slate-800 rounded">قنوات: <strong class="text-yellow-300">${totals.channel}</strong></span>
+          <span class="px-2 py-1 bg-slate-800 rounded">شورتس: <strong class="text-pink-300">${totals.short}</strong></span>
+          <span class="px-2 py-1 bg-slate-800 rounded">بتاريخ محدد: <strong class="text-emerald-400">${entries.length - undated}</strong></span>
+          <span class="px-2 py-1 bg-slate-800 rounded">بدون تاريخ: <strong class="text-amber-300">${undated}</strong></span>
+        </div>
+        <div class="mt-2 text-[11px] text-slate-400">أشهر الوسوم: ${topTags || '—'}</div>
+        <div class="mt-1 text-[11px] text-slate-400">أكثر المواقع استخداماً: ${topSites || '—'}</div>
+        <div class="mt-1 text-[11px] text-slate-400">أبرز الأسابيع: ${topWeeks || '—'}</div>
+      `;
+    }
+
+    function flashMessage(message, colorClass = 'text-emerald-400') {
+      const box = document.getElementById('urlsNotifications');
+      box.className = `text-[11px] h-4 mt-1 ${colorClass}`;
+      box.textContent = message;
+      if (message) {
+        setTimeout(() => {
+          box.textContent = '';
+        }, 3500);
+      }
+    }
+
+    document.getElementById('cleanUrlsBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('urlsInput');
+      const lines = textarea.value.split('\n');
+
+      const cleanedUrls = Array.from(new Set(
+        lines
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith('#'))
+          .map(url => cleanYouTubeUrl(url))
+          .filter(Boolean)
+      ));
+
+      if (!cleanedUrls.length) {
+        alert('لا توجد روابط لإضافتها.');
+        return;
+      }
+
+      // الحصول على الروابط الموجودة حالياً
+      const existingUrls = new Set(urlEntries.map(e => e.url));
+      
+      // فلترة الروابط الجديدة فقط (غير المكررة)
+      const newUrls = cleanedUrls.filter(url => !existingUrls.has(url));
+      
+      if (!newUrls.length) {
+        flashMessage('⚠️ جميع الروابط موجودة مسبقاً في القائمة.', 'text-amber-400');
+        textarea.value = '';
+        return;
+      }
+
+      // إنشاء إدخالات جديدة للروابط الجديدة
+      const newEntries = newUrls.map(url => buildEntry(url));
+      
+      // إضافة الروابط الجديدة للقائمة الموجودة
+      const combinedEntries = [...urlEntries, ...newEntries];
+      
+      // تحديث القائمة
+      setEntries(combinedEntries);
+      
+      // تفريغ خانة الإدخال بعد الإضافة
+      textarea.value = '';
+      
+      flashMessage(`✓ تم إضافة ${newUrls.length} رابط جديد للقائمة (الإجمالي: ${combinedEntries.length}).`, 'text-emerald-400');
+    });
+
+    document.getElementById('saveUrlsBtn').addEventListener('click', () => {
+      const textarea = document.getElementById('urlsInput');
+      const listToSave = urlEntries.length
+        ? urlEntries.map(entry => entry.url)
+        : textarea.value.split('\n').map(line => line.trim()).filter(line => line && !line.startsWith('#'));
+
+      if (!listToSave.length) {
+        alert('لا توجد روابط لحفظها!');
+        return;
+      }
+
+      const blob = new Blob([listToSave.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'urls.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      flashMessage('✓ تم حفظ ملف urls.txt بنجاح.', 'text-emerald-400');
+    });
+
+    document.getElementById('clearUrlsBtn').addEventListener('click', () => {
+      if (confirm('هل أنت متأكد من مسح جميع الروابط من قاعدة البيانات؟ هذا الإجراء لا يمكن التراجع عنه.')) {
+        document.getElementById('urlsInput').value = '';
+        setEntries([]);
+        flashMessage('تم مسح جميع الروابط من قاعدة البيانات.', 'text-slate-300');
+      }
+    });
+
+    // لا نحذف البيانات عند الكتابة في خانة الإدخال
+    // خانة الإدخال فقط لإضافة روابط جديدة
+
+    document.getElementById('urlsTableContainer').addEventListener('input', (event) => {
+      const target = event.target;
+      if (!target.matches('input[data-field]')) return;
+      const index = Number(target.dataset.index);
+      const field = target.dataset.field;
+      if (!urlEntries[index]) return;
+      if (field === 'dateValue') return;
+      const value = target.value.trim();
+      const defaults = extractTagAndFolder(urlEntries[index].url);
+
+      if (field === 'tag') {
+        const normalized = value ? normalizeTagValue(value) : defaults.primaryTag;
+        urlEntries[index].tag = normalized || '#videos';
+        target.value = urlEntries[index].tag;
+      } else if (field === 'folder') {
+        urlEntries[index].folder = value ? normalizeFolderValue(value) : defaults.folder;
+        target.value = urlEntries[index].folder;
+      } else if (field === 'extraTags') {
+        urlEntries[index].extraTags = normalizeExtraTags(value);
+        target.value = urlEntries[index].extraTags;
+      }
+
+      updateUrlsStats(urlEntries);
+      persistEntriesToLocalStorage();
+    });
+
+    function handleDateInputChange(target) {
+      const index = Number(target.dataset.index);
+      if (!urlEntries[index]) return;
+      const value = target.value.trim();
+      if (value && !isValidDateValue(value)) {
+        flashMessage('صيغة التاريخ يجب أن تكون YYYY-MM-DD.', 'text-amber-400');
+        target.value = urlEntries[index].dateValue;
+        return;
+      }
+      applyDateValue(urlEntries[index], value);
+      updateDateSummaryDisplay(index);
+      updateUrlsStats(urlEntries);
+    }
+
+    document.getElementById('urlsTableContainer').addEventListener('change', (event) => {
+      const target = event.target;
+      if (target.matches('input[data-field="dateValue"]')) {
+        handleDateInputChange(target);
+      }
+    });
+
+    // معالج حذف رابط فردي
+    document.getElementById('urlsTableContainer').addEventListener('click', (event) => {
+      const target = event.target;
+      if (target.matches('button[data-delete-index]')) {
+        const index = Number(target.dataset.deleteIndex);
+        if (urlEntries[index]) {
+          const url = urlEntries[index].url;
+          if (confirm(`هل تريد حذف هذا الرابط من قاعدة البيانات؟\n${url.substring(0, 60)}...`)) {
+            urlEntries.splice(index, 1);
+            setEntries(urlEntries);
+            flashMessage('✓ تم حذف الرابط من قاعدة البيانات.', 'text-amber-400');
+          }
+        }
+      }
+    });
+
+    document.getElementById('exportDataBtn').addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (!urlEntries.length) {
+        alert('لا توجد بيانات لتصديرها! نظف الروابط أو استورد ملفاً أولاً.');
+        return;
+      }
+
+      try {
+        const payload = {
+          generatedAt: new Date().toISOString(),
+          total: urlEntries.length,
+          entries: urlEntries.map(entry => ({
+            url: entry.url,
+            tag: entry.tag,
+            folder: entry.folder,
+            siteTag: entry.siteTag,
+            extraTags: entry.extraTags,
+            type: entry.type,
+            dateValue: entry.dateValue,
+            dayLabel: entry.dayLabel,
+            weekLabel: entry.weekLabel,
+            title: entry.title || '',
+          })),
+        };
+
+        const jsonString = JSON.stringify(payload, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8' });
+        
+        // طريقة التنزيل المحسّنة لجميع المتصفحات
+        const filename = 'youtube_links_with_tags.json';
+        
+        // التحقق من دعم المتصفح لـ msSaveBlob (Internet Explorer / Edge القديم)
+        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+          window.navigator.msSaveOrOpenBlob(blob, filename);
+          flashMessage('✓ تم تصدير البيانات (JSON) بنجاح.', 'text-emerald-400');
+          return;
+        }
+        
+        // إنشاء رابط التنزيل
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        // إضافة الرابط للصفحة
+        document.body.appendChild(link);
+        
+        // محاكاة النقر على الرابط
+        link.click();
+        
+        // تنظيف بعد التنزيل
+        setTimeout(function() {
+          document.body.removeChild(link);
+          URL.revokeObjectURL(downloadUrl);
+        }, 100);
+        
+        flashMessage('✓ تم تصدير البيانات (JSON) بنجاح.', 'text-emerald-400');
+        console.log('تم تصدير الملف:', filename, 'عدد الروابط:', urlEntries.length);
+        
+      } catch (error) {
+        console.error('خطأ أثناء التصدير:', error);
+        alert('حدث خطأ أثناء تصدير الملف: ' + error.message);
+      }
+    });
+
+    const importInput = document.getElementById('importDataInput');
+
+    document.getElementById('importDataBtn').addEventListener('click', () => {
+      importInput.value = '';
+      importInput.click();
+    });
+
+    function guessIsoFromLabel(label) {
+      if (typeof label !== 'string') return '';
+      const trimmed = label.trim();
+      if (!trimmed) return '';
+      const matchYMD = trimmed.match(/(\d{4})[\/-](\d{2})[\/-](\d{2})/);
+      if (matchYMD) {
+        return `${matchYMD[1]}-${matchYMD[2]}-${matchYMD[3]}`;
+      }
+      const matchDMY = trimmed.match(/(\d{2})[\/](\d{2})[\/](\d{4})/);
+      if (matchDMY) {
+        return `${matchDMY[3]}-${matchDMY[2]}-${matchDMY[1]}`;
+      }
+      return '';
+    }
+
+    importInput.addEventListener('change', (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result;
+          const parsed = JSON.parse(content);
+          const entriesArray = Array.isArray(parsed) ? parsed : parsed.entries;
+          if (!Array.isArray(entriesArray)) {
+            throw new Error('صيغة الملف غير صحيحة');
+          }
+
+          const normalized = entriesArray
+            .map((item) => {
+              if (!item || typeof item.url !== 'string') return null;
+              const cleanUrl = cleanYouTubeUrl(item.url);
+              const base = buildEntry(cleanUrl);
+              const entry = {
+                ...base,
+                tag: item.tag ? (normalizeTagValue(item.tag) || base.tag) : base.tag,
+                folder: item.folder ? normalizeFolderValue(item.folder) : base.folder,
+                extraTags: item.extraTags ? normalizeExtraTags(Array.isArray(item.extraTags) ? item.extraTags.join(' ') : item.extraTags) : '',
+                title: typeof item.title === 'string' ? item.title.trim() : (base.title || ''),
+              };
+
+              const isoFromValue = item.dateValue && isValidDateValue(item.dateValue) ? item.dateValue : '';
+              const isoFromLabel = !isoFromValue && typeof item.dayLabel === 'string' ? guessIsoFromLabel(item.dayLabel) : '';
+              const isoFinal = isoFromValue || (isoFromLabel && isValidDateValue(isoFromLabel) ? isoFromLabel : '');
+              if (isoFinal) {
+                applyDateValue(entry, isoFinal);
+              }
+
+              return entry;
+            })
+            .filter(Boolean);
+
+          if (!normalized.length) {
+            throw new Error('الملف لا يحتوي على روابط صالحة.');
+          }
+
+          document.getElementById('urlsInput').value = normalized.map(entry => entry.url).join('\n');
+          setEntries(normalized);
+          flashMessage('✓ تم استيراد البيانات وتحديث الوسوم.', 'text-emerald-400');
+        } catch (err) {
+          alert('تعذر قراءة الملف: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    async function fetchYouTubeTitles() {
+      if (!urlEntries.length) {
+        alert('لا توجد روابط لجلب عناوينها.');
+        return;
+      }
+
+      flashMessage('جاري جلب عناوين الفيديوهات من يوتيوب...', 'text-blue-300');
+
+      let updated = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const entry of urlEntries) {
+        if (!entry || !entry.url) {
+          skipped++;
+          continue;
+        }
+        // نهتم فقط بروابط يوتيوب من نوع فيديو أو شورت
+        if (entry.siteTag !== '#youtube' || (entry.type !== 'video' && entry.type !== 'short')) {
+          skipped++;
+          continue;
+        }
+        // إذا كان العنوان موجوداً مسبقاً نتخطاه
+        if (entry.title && entry.title.trim()) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          const oembedUrl = 'https://www.youtube.com/oembed?url=' + encodeURIComponent(entry.url) + '&format=json';
+          const res = await fetch(oembedUrl);
+          if (!res.ok) {
+            failed++;
+            continue;
+          }
+          const data = await res.json();
+          if (data && typeof data.title === 'string') {
+            entry.title = data.title;
+            updated++;
+          } else {
+            failed++;
+          }
+        } catch (e) {
+          console.warn('تعذر جلب عنوان الفيديو:', e);
+          failed++;
+        }
+      }
+
+      persistEntriesToLocalStorage();
+      renderEntriesTable();
+
+      if (updated) {
+        flashMessage(`اكتمل جلب العناوين. تم تحديث ${updated} رابطاً، وتخطّي ${skipped}، وفشل ${failed}.`, 'text-emerald-400');
+      } else {
+        flashMessage(`لم يتم تحديث أي عنوان. تم تخطّي ${skipped} رابطاً، وفشل ${failed}.`, 'text-amber-400');
+      }
+    }
+
+    const fetchTitlesBtn = document.getElementById('fetchTitlesBtn');
+    if (fetchTitlesBtn) {
+      fetchTitlesBtn.addEventListener('click', () => {
+        fetchYouTubeTitles();
+      });
+    }
+
+    // تحميل البيانات المخزنة (إن وجدت) عند فتح الصفحة
+    loadEntriesFromLocalStorage();
+    if (!urlEntries.length) {
+      renderEntriesTable();
+    }
+  </script>
+</body>
+  </html>
